@@ -19,26 +19,23 @@
 		<button id="editorItalic">italic</button>
 		<button id="editorHeading">heading</button>
 
+		<script src="node_modules/socket.io/node_modules/socket.io-client/socket.io.js"></script>
 		<script>
-			var editor = document.getElementById('editor');
+			var socket = io.connect(),
+				editor = document.getElementById('editor'),
+				userId = 'user_' + new Date().getTime();
 			/*var editor = document.getElementById('editor').contentDocument;
 			editor.designMode = "On";
 			editor.execCommand("insertBrOnReturn", false, "true");*/
-
+			console.log('unique user: ' + userId);
 			var paragraphs = {
 				index: [
 					1,
 					0
 				],
 				data: [
-				{
-					text: 'Second paragraph here',
-					lock: ''
-				},
-				{
-					text: 'First line',
-					lock: ''
-				}
+					{ text: 'Second paragraph here', lock: '' },
+					{ text: 'First line', lock: '' }
 				]
 			};
 
@@ -52,8 +49,7 @@
 				} else {
 					parentElement = startContainer.parentNode.previousSibling;
 				}
-				
-				
+								
 				// find the current row/paragraph
 				while (parentElement.previousSibling !== null) {
 					if (parentElement.nodeType !== 3) {
@@ -63,54 +59,53 @@
 					parentElement = parentElement.previousSibling;						
 				}
 
-
 				return {row: row, col: col }
-
 			};
 
-			editor.addEventListener('keyup', function (event) {
-				var paraPos = window.getSelection().getRangeAt(0).startOffset;
+			var setColorAndLock = function () {
 				var paragraph = editor.getElementsByTagName('p');
-				var currentPos = findPosition(window.getSelection().getRangeAt(0).startContainer);
 
 				// remove users lock/color
 				for (var p = 0; p < paragraph.length; p++) {
-					/*if (p === currentPos.row) {
-						paragraph[p].classList.add('userColor1');
-					} else {
-						paragraph[p].classList.remove('userColor1');
-					}*/
-
 					paragraph[p].classList.remove('userColor1');
-					
 				}
 
+				// looping through data object
+				for (var i = 0; i < paragraphs.data.length; i++) {
+					if (paragraphs.data[i].lock === userId) {
+						paragraphs.data[i].lock = '';
+					}
+				}
+			};
+
+			editor.addEventListener('click', function (event) {
+				var paragraph = editor.getElementsByTagName('p'),
+					currentPos = findPosition(window.getSelection().getRangeAt(0).startContainer);
+
+				// set color and lock
+				setColorAndLock();
+
+				paragraphs.data[currentPos.row].lock = userId;
+				window.getSelection().getRangeAt(0).startContainer.parentNode.className = 'userColor1';
+			}, false);
+
+			editor.addEventListener('keyup', function (event) {
+				var paraPos = window.getSelection().getRangeAt(0).startOffset,
+					paragraph = editor.getElementsByTagName('p'),
+					currentPos = findPosition(window.getSelection().getRangeAt(0).startContainer);
+				
+
+				// set color and lock
+				setColorAndLock();
+
 				console.log('writing in paragraph', currentPos.row);
-
-				// add text to data lock object
-				
-				
-				
-
-
+			
 				if (event.keyCode !== 13) {
 					paragraphs.data[currentPos.row].text = paragraph[currentPos.row].textContent;
 					if (window.getSelection().getRangeAt(0).startContainer.parentNode.className !== 'editor') {
-						window.getSelection().getRangeAt(0).startContainer.parentNode.className = 'userColor1';	
+						window.getSelection().getRangeAt(0).startContainer.parentNode.className = 'userColor1';
 					}
 				}
-				/*function getPos() {
-					var sel = document.getSelection(),
-					    nd = sel.anchorNode,
-					    text = nd.textContent.slice(0, sel.focusOffset);
-
-					var line=text.split("\n").length;
-					var col=text.split("\n").pop().length;
-					console.log("row:"+line+", col:"+col );
-				}
-				getPos();*/
-
-				//console.log('position - paragraph: ' + paragraph + ', col: ' + paraPos);
 
 				if (event.keyCode === 13) { // if enter key
 					document.execCommand('formatBlock', false, '<p>');
@@ -139,9 +134,16 @@
 					return false;
 			    }
 
+			    socket.emit('sendText', paragraphs);
+
 			    console.log(paragraphs);
 
 			}, false);
+
+			socket.on('msgBroadcast', function (paragraphs) {
+				console.log('recieving from broadcast', paragraphs);
+				//editor.getElementsByTagName('p');
+		    });
 
 			console.log(paragraphs);
 
