@@ -1,0 +1,15 @@
+
+
+.editor {
+	border: 1px solid #000;
+	width: 40%;
+	height: 500px;
+}
+
+.userColor1 {
+	color: blue;
+}
+
+.userColor2 {
+	color: green;
+}

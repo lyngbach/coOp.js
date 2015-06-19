@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+	<head>
+	<link rel="stylesheet" href="css/stylesheet.css">
+	</head>
+
+	<body>
+		<!--<iframe id="editor" class="editor">
+			<head></head>
+			<body><div>some text</div></body>
+		</iframe>-->
+
+		<div contenteditable="true" id="editor" class="editor">
+			<p>Second paragraph here</p>
+			<p>First line</p>
+		</div>
+
+		<button id="editorBold">bold</button>
+		<button id="editorItalic">italic</button>
+		<button id="editorHeading">heading</button>
+
+		<script>
+			var editor = document.getElementById('editor');
+			/*var editor = document.getElementById('editor').contentDocument;
+			editor.designMode = "On";
+			editor.execCommand("insertBrOnReturn", false, "true");*/
+
+			var paragraphs = {
+				index: [
+					1,
+					0
+				],
+				data: [
+				{
+					text: 'Second paragraph here',
+					lock: ''
+				},
+				{
+					text: 'First line',
+					lock: ''
+				}
+				]
+			};
+
+			var findPosition = function (startContainer) {
+				var row = 0,
+					col = window.getSelection().getRangeAt(0).startOffset,
+					parentElement;
+				
+				if (startContainer.nodeType === 1) {
+					parentElement = startContainer.previousSibling;
+				} else {
+					parentElement = startContainer.parentNode.previousSibling;
+				}
+				
+				
+				// find the current row/paragraph
+				while (parentElement.previousSibling !== null) {
+					if (parentElement.nodeType !== 3) {
+						row += 1;
+					}
+					
+					parentElement = parentElement.previousSibling;						
+				}
+
+
+				return {row: row, col: col }
+
+			};
+
+			editor.addEventListener('keyup', function (event) {
+				var paraPos = window.getSelection().getRangeAt(0).startOffset;
+				var paragraph = editor.getElementsByTagName('p');
+				var currentPos = findPosition(window.getSelection().getRangeAt(0).startContainer);
+
+				// remove users lock/color
+				for (var p = 0; p < paragraph.length; p++) {
+					/*if (p === currentPos.row) {
+						paragraph[p].classList.add('userColor1');
+					} else {
+						paragraph[p].classList.remove('userColor1');
+					}*/
+
+					paragraph[p].classList.remove('userColor1');
+					
+				}
+
+				console.log('writing in paragraph', currentPos.row);
+
+				// add text to data lock object
+				
+				
+				
+
+
+				if (event.keyCode !== 13) {
+					paragraphs.data[currentPos.row].text = paragraph[currentPos.row].textContent;
+					if (window.getSelection().getRangeAt(0).startContainer.parentNode.className !== 'editor') {
+						window.getSelection().getRangeAt(0).startContainer.parentNode.className = 'userColor1';	
+					}
+				}
+				/*function getPos() {
+					var sel = document.getSelection(),
+					    nd = sel.anchorNode,
+					    text = nd.textContent.slice(0, sel.focusOffset);
+
+					var line=text.split("\n").length;
+					var col=text.split("\n").pop().length;
+					console.log("row:"+line+", col:"+col );
+				}
+				getPos();*/
+
+				//console.log('position - paragraph: ' + paragraph + ', col: ' + paraPos);
+
+				if (event.keyCode === 13) { // if enter key
+					document.execCommand('formatBlock', false, '<p>');
+					
+					var newPos = findPosition(window.getSelection().getRangeAt(0).startContainer);
+					
+					console.log('newPos:', newPos);
+
+
+					//if (window.getSelection().getRangeAt(0).startContainer.previousSibling !== null) {
+						
+						if (newPos.row === paragraphs.data.length) { // if last line
+							console.log('last line');
+							paragraphs.data.splice((newPos.row), 0, {text: '', lock: ''});
+							paragraphs.index.splice((newPos.row), 0, (paragraphs.data.length));
+							window.getSelection().getRangeAt(0).startContainer.previousSibling.classList.remove('userColor1');
+						} else {
+							console.log('not last line');
+							paragraphs.data.splice((newPos.row - 1), 0, {text: '', lock: ''});
+							paragraphs.index.splice((newPos.row - 1), 0, (paragraphs.data.length - 1));
+						}
+						console.log(paragraphs);
+					//}
+
+					// prevent the default behaviour of return key pressed
+					return false;
+			    }
+
+			    console.log(paragraphs);
+
+			}, false);
+
+			console.log(paragraphs);
+
+			document.getElementById('editorBold').addEventListener('click', function () {
+				document.execCommand('bold', false, '');
+			}, false);
+
+			document.getElementById('editorItalic').addEventListener('click', function () {
+				document.execCommand('italic', false, '');
+			}, false);
+
+			document.getElementById('editorHeading').addEventListener('click', function () {
+				document.execCommand('formatBlock', false, '<h2>');
+			}, false);
+			
+		</script>
+	</body>
+</html>
+
