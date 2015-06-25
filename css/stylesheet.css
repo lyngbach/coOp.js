@@ -1,9 +1,16 @@
 
+.editWrapper {
+	float: left;
+	width: 100%;
+	margin-bottom: 50px;
+}
 
 .editor {
 	border: 1px solid #000;
 	width: 40%;
 	height: 500px;
+	float: left;
+	margin-right: 5%;
 }
 
 .userColor1 {
@@ -12,4 +19,8 @@
 
 .userColor2 {
 	color: green;
+}
+
+.userLocked {
+	color: #999;
 }

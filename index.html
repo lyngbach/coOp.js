@@ -10,142 +10,360 @@
 			<body><div>some text</div></body>
 		</iframe>-->
 
-		<div contenteditable="true" id="editor" class="editor">
-			<p>Second paragraph here</p>
-			<p>First line</p>
-		</div>
+		<section class="editWrapper">
+			<div contenteditable="true" id="editor" class="editor" onclick="initEditor('editor')">
+				<p>Second paragraph here</p>
+				<p>First line</p>
+			</div>
+
+			<div contenteditable="true" id="newBox" class="editor" onclick="initEditor('newBox')">
+				<p>Second paragraph here</p>
+				<p>First line</p>
+			</div>
+		</section>
+
 
 		<button id="editorBold">bold</button>
 		<button id="editorItalic">italic</button>
 		<button id="editorHeading">heading</button>
 
+		<button onclick="initEditor('editor')">Select felt 1</button>
+		<button onclick="initEditor('newBox')">Select felt 2</button>
+		<div>
+			<span>din bruger:</span>
+			<span id="theUser"></span>
+		</div>
+
 		<script src="node_modules/socket.io/node_modules/socket.io-client/socket.io.js"></script>
 		<script>
 			var socket = io.connect(),
-				editor = document.getElementById('editor'),
-				userId = 'user_' + new Date().getTime();
+				userId = 'user_' + new Date().getSeconds();
+
+			document.getElementById('theUser').innerHTML = userId;
 			/*var editor = document.getElementById('editor').contentDocument;
 			editor.designMode = "On";
 			editor.execCommand("insertBrOnReturn", false, "true");*/
 			console.log('unique user: ' + userId);
-			var paragraphs = {
-				index: [
-					1,
-					0
-				],
-				data: [
-					{ text: 'Second paragraph here', lock: '' },
-					{ text: 'First line', lock: '' }
-				]
-			};
 
-			var findPosition = function (startContainer) {
-				var row = 0,
-					col = window.getSelection().getRangeAt(0).startOffset,
-					parentElement;
-				
-				if (startContainer.nodeType === 1) {
-					parentElement = startContainer.previousSibling;
-				} else {
-					parentElement = startContainer.parentNode.previousSibling;
+
+			/*function execCommandOnElement(el, commandName, value) {
+				if (typeof value == "undefined") {
+					value = null;
 				}
-								
-				// find the current row/paragraph
-				while (parentElement.previousSibling !== null) {
-					if (parentElement.nodeType !== 3) {
-						row += 1;
+
+				if (typeof window.getSelection != "undefined") {
+					// Non-IE case
+					var sel = window.getSelection();
+
+					// Save the current selection
+					var savedRanges = [];
+					for (var i = 0, len = sel.rangeCount; i < len; ++i) {
+						savedRanges[i] = sel.getRangeAt(i).cloneRange();
 					}
-					
-					parentElement = parentElement.previousSibling;						
-				}
 
-				return {row: row, col: col }
-			};
+					// Temporarily enable designMode so that
+					// document.execCommand() will work
+					document.designMode = "on";
 
-			var setColorAndLock = function () {
-				var paragraph = editor.getElementsByTagName('p');
+					// Select the element's content
+					sel = window.getSelection();
+					var range = document.createRange();
+					range.selectNodeContents(el);
+					sel.removeAllRanges();
+					sel.addRange(range);
 
-				// remove users lock/color
-				for (var p = 0; p < paragraph.length; p++) {
-					paragraph[p].classList.remove('userColor1');
-				}
+					// Execute the command
+					document.execCommand(commandName, false, value);
 
-				// looping through data object
-				for (var i = 0; i < paragraphs.data.length; i++) {
-					if (paragraphs.data[i].lock === userId) {
-						paragraphs.data[i].lock = '';
+					// Disable designMode
+					document.designMode = "off";
+
+					// Restore the previous selection
+					sel = window.getSelection();
+					sel.removeAllRanges();
+					for (var i = 0, len = savedRanges.length; i < len; ++i) {
+						sel.addRange(savedRanges[i]);
 					}
+				} else if (typeof document.body.createTextRange != "undefined") {
+					// IE case
+					var textRange = document.body.createTextRange();
+					textRange.moveToElementText(el);
+					textRange.execCommand(commandName, false, value);
 				}
-			};
+			}*/
 
-			editor.addEventListener('click', function (event) {
-				var paragraph = editor.getElementsByTagName('p'),
-					currentPos = findPosition(window.getSelection().getRangeAt(0).startContainer);
-
-				// set color and lock
-				setColorAndLock();
-
-				paragraphs.data[currentPos.row].lock = userId;
-				window.getSelection().getRangeAt(0).startContainer.parentNode.className = 'userColor1';
-			}, false);
-
-			editor.addEventListener('keyup', function (event) {
-				var paraPos = window.getSelection().getRangeAt(0).startOffset,
-					paragraph = editor.getElementsByTagName('p'),
-					currentPos = findPosition(window.getSelection().getRangeAt(0).startContainer);
-				
-
-				// set color and lock
-				setColorAndLock();
-
-				console.log('writing in paragraph', currentPos.row);
-			
-				if (event.keyCode !== 13) {
-					paragraphs.data[currentPos.row].text = paragraph[currentPos.row].textContent;
-					if (window.getSelection().getRangeAt(0).startContainer.parentNode.className !== 'editor') {
-						window.getSelection().getRangeAt(0).startContainer.parentNode.className = 'userColor1';
-					}
-				}
-
-				if (event.keyCode === 13) { // if enter key
-					document.execCommand('formatBlock', false, '<p>');
-					
-					var newPos = findPosition(window.getSelection().getRangeAt(0).startContainer);
-					
-					console.log('newPos:', newPos);
-
-
-					//if (window.getSelection().getRangeAt(0).startContainer.previousSibling !== null) {
-						
-						if (newPos.row === paragraphs.data.length) { // if last line
-							console.log('last line');
-							paragraphs.data.splice((newPos.row), 0, {text: '', lock: ''});
-							paragraphs.index.splice((newPos.row), 0, (paragraphs.data.length));
-							window.getSelection().getRangeAt(0).startContainer.previousSibling.classList.remove('userColor1');
-						} else {
-							console.log('not last line');
-							paragraphs.data.splice((newPos.row - 1), 0, {text: '', lock: ''});
-							paragraphs.index.splice((newPos.row - 1), 0, (paragraphs.data.length - 1));
+			var coop = {
+				goal: {
+					desc: [
+						{ text: 'Second paragraph here', lock: '' },
+						{ text: 'First line', lock: '' }
+					],
+					subject: {
+						"fag1": {
+							"activeLG": [
+								{ text: 'Second paragraph here', lock: '' },
+								{ text: 'First line', lock: '' }
+							],
+							"activeLS": [
+								{ text: 'Second paragraph here', lock: '' },
+								{ text: 'First line', lock: '' },
+								{ text: 'third paragraph', lock: '' }
+							]
+						},
+						"fag22": {
+							"activeLG": [
+								{ text: 'default text', lock: '' }
+							],
+							"activeLS": []
 						}
-						console.log(paragraphs);
-					//}
+					}
+				},
+				partCourse: {
+					"partCourse14": {
+						partCourseId: 14,
+						text: [
+							{ text: 'Second paragraph here', lock: '' },
+							{ text: 'First line', lock: '' }
+						],
+						activity: {
+							"activity1": {
+								activityId: 1,
+								text: [
+									{ text: 'Second paragraph here', lock: '' },
+									{ text: 'First line', lock: '' }
+								]
+							},
+							"activity33": [
+								{ text: 'Second paragraph here', lock: '' },
+								{ text: 'First line', lock: '' }
+							],
+						}
+					},
+					"partCourse15": {
+						partCourseId: 15,
+						text: [
+							{ text: 'First line', lock: '' }
+						],
+						activity: {}
+					}					
+				},
+				evaluation: {
+					"evaluation3": {
+						desc: [
+							{ text: 'Second paragraph here', lock: '' },
+							{ text: 'First line', lock: '' },
+							{ text: 'third line', lock: '' },
+							{ text: 'fourth line', lock: '' },
+							{ text: 'fifth line', lock: '' },
+							{ text: 'six line', lock: '' }
+						]	
+					}
+				}
+			};
 
-					// prevent the default behaviour of return key pressed
-					return false;
-			    }
+			var paragraphs;
 
-			    socket.emit('sendText', paragraphs);
+			var initEditor = function (element) {
+				var editor = document.getElementById(element);
+				
+				paragraphs = {
+					index: [
+						1,
+						0
+					],
+					editor: element,
+					data: [
+						{ text: 'Second paragraph here', lock: '' },
+						{ text: 'First line', lock: '' }
+					]
+				};
 
-			    console.log(paragraphs);
+				var findPosition = function (startContainer) {
+					var row = 0,
+						col = window.getSelection().getRangeAt(0).startOffset,
+						parentElement;
+					
+					if (startContainer.nodeType === 1) {
+						parentElement = startContainer.previousSibling;
+					} else {
+						parentElement = startContainer.parentNode.previousSibling;
+					}
+									
+					// find the current row/paragraph
+					while (parentElement.previousSibling !== null) {
+						if (parentElement.nodeType !== 3) {
+							row += 1;
+						}
+						
+						parentElement = parentElement.previousSibling;						
+					}
 
-			}, false);
+					return { row: row, col: col }
+				};
 
-			socket.on('msgBroadcast', function (paragraphs) {
+				var setColorAndLock = function (callback) {
+					var paragraph = editor.getElementsByTagName('p');
+
+					// remove users lock/color
+					for (var p = 0; p < paragraph.length; p++) {
+						paragraph[p].classList.remove('userColor1');
+						paragraph[p].classList.remove('userLocked');
+					}
+
+					// looping through data object
+					for (var i = 0; i < paragraphs.data.length; i++) {
+						if (paragraphs.data[i].lock === userId) {
+							paragraphs.data[i].lock = '';
+						}
+					}
+
+					if (callback !== undefined) {
+						callback();	
+					}
+					
+				};
+
+				editor.addEventListener('click', function (event) {
+					var paragraph = editor.getElementsByTagName('p'),
+						currentPos = findPosition(window.getSelection().getRangeAt(0).startContainer);
+
+					//console.log(event.currentTarget.id)
+					// set color and lock
+					setColorAndLock(function () {
+						if (paragraphs.data[currentPos.row].lock === '') {
+							/*paragraphs.data[currentPos.row].lock = userId;
+
+							window.getSelection().getRangeAt(0).startContainer.parentNode.className = 'userColor1';*/
+
+							//socket.emit('sendText', paragraphs);
+						} else {
+							window.getSelection().getRangeAt(0).startContainer.parentNode.className = 'userLocked';	
+						}
+					});
+
+				}, false);
+
+				editor.addEventListener('keyup', function (event) {
+					var paraPos = window.getSelection().getRangeAt(0).startOffset,
+						paragraph = editor.getElementsByTagName('p'),
+						currentPos = findPosition(window.getSelection().getRangeAt(0).startContainer);
+					
+					//console.log('paragraphs', paragraph)
+					// set color and lock
+					setColorAndLock();
+					
+
+					if (event.keyCode !== 13) {
+						
+						if (paragraphs.data[currentPos.row].lock === '' || paragraphs.data[currentPos.row].lock === userId) {
+							paragraphs.data[currentPos.row].text = paragraph[currentPos.row].textContent;
+							paragraphs.data[currentPos.row].lock = userId;
+							
+							if (window.getSelection().getRangeAt(0).startContainer.parentNode.className !== 'editor') {
+								window.getSelection().getRangeAt(0).startContainer.parentNode.className = 'userColor1';
+							}
+						}
+						
+					}
+
+					console.log('paragraphs', paragraphs)
+					
+					if (event.keyCode === 13) { // if enter key
+						//execCommandOnElement(editor, 'formatBlock', '<div>');
+						document.execCommand('formatBlock', false, '<p>');
+						
+						var newPos = findPosition(window.getSelection().getRangeAt(0).startContainer);
+						
+						//if (window.getSelection().getRangeAt(0).startContainer.previousSibling !== null) {
+							
+							if (newPos.row === paragraphs.data.length) { // if last line
+								paragraphs.data.splice((newPos.row), 0, {text: '', lock: userId});
+								//paragraphs.index.splice((newPos.row), 0, (paragraphs.data.length));
+								window.getSelection().getRangeAt(0).startContainer.previousSibling.classList.remove('userColor1');
+							} else {
+								paragraphs.data.splice((newPos.row), 0, {text: '', lock: userId});
+								//paragraphs.index.splice((newPos.row), 0, (paragraphs.data.length - 1));
+							}
+							
+						//}
+
+						socket.emit('sendText', paragraphs);
+
+						// prevent the default behaviour of return key pressed
+						return false;
+					}
+
+					socket.emit('sendText', paragraphs);
+
+					console.log(paragraphs);
+				}, false);
+			};
+
+			initEditor('editor');
+
+			// handle recived event
+			socket.on('msgBroadcast', function (broadcastText) {
+				var editor = document.getElementById(broadcastText.editor);
+				console.log('editor:', editor);
+				var para = editor.getElementsByTagName('p');
+
+
 				console.log('recieving from broadcast', paragraphs);
-				//editor.getElementsByTagName('p');
-		    });
+				
+				// check for new paragraphs
+				for (var b = 0; b < broadcastText.data.length; b++) {
 
-			console.log(paragraphs);
+					if (para[b] === undefined) { // new last line
+						var newParagraph = document.createElement('p');
+						
+						console.log('new last line');
+
+						newParagraph.className = 'lastLine';
+
+						editor.appendChild(newParagraph);
+
+						paragraphs.data.splice(b, 0, {text: '', lock: broadcastText.data[b].lock});
+						//paragraphs.index.splice(b, 0, (paragraphs.data.length));
+					} else if (broadcastText.data[b].text !== para[b].innerHTML && broadcastText.data[b].text === '') { // new line in between
+						var newParagraph = document.createElement('p');
+
+						console.log('new line in between');
+
+						newParagraph.className = 'yolo_swag';
+
+						editor.insertBefore(newParagraph, para[b]);
+						
+
+						paragraphs.data.splice(b, 0, {text: '', lock: broadcastText.data[b].lock});
+						//paragraphs.index.splice(b, 0, (paragraphs.data.length));
+					} else {
+						if (paragraphs.data[b].lock !== userId) {
+							console.log('updating paragraphs')
+							paragraphs.data[b].text = broadcastText.data[b].text;
+							paragraphs.data[b].lock = broadcastText.data[b].lock;
+						}
+					}					
+				}
+
+				console.log('paragraphs after first loop', paragraphs);
+
+				var newPara = editor.getElementsByTagName('p');
+				// insert changes
+				for (var n = 0; n < newPara.length; n++) {
+					//console.log('new paragraphs lock:', paragraphs.data[n].lock);
+					if (paragraphs.data[n].lock !== userId) {
+						if (paragraphs.data[n].text === '') {
+							newPara[n].innerHTML = '&nbsp;';
+						} else {
+							/*console.log('old text:', newPara[n].innerHTML);
+							console.log('new text:', paragraphs.data[n].text);
+							console.log('-----------');*/
+							newPara[n].innerHTML = paragraphs.data[n].text;	
+						}						
+					}
+				}				
+			});
+			
 
 			document.getElementById('editorBold').addEventListener('click', function () {
 				document.execCommand('bold', false, '');
