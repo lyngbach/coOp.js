@@ -11,12 +11,12 @@
 		</iframe>-->
 
 		<section class="editWrapper">
-			<div contenteditable="true" id="editor" class="editor" onclick="initEditor('editor')">
+			<div contenteditable="true" id="editor" class="editor">
 				<p>Second paragraph here</p>
 				<p>First line</p>
 			</div>
 
-			<div contenteditable="true" id="newBox" class="editor" onclick="initEditor('newBox')">
+			<div contenteditable="true" id="newBox" class="editor">
 				<p>Second paragraph here</p>
 				<p>First line</p>
 			</div>
@@ -161,10 +161,14 @@
 				}
 			};
 
-			var paragraphs;
+			var paragraphs,
+				editor,
+				counter = 0;
 
 			var initEditor = function (element) {
-				var editor = document.getElementById(element);
+				counter++;
+				console.log('tmes inited?', counter)
+				editor = document.getElementById(element);
 				
 				paragraphs = {
 					index: [
@@ -173,8 +177,8 @@
 					],
 					editor: element,
 					data: [
-						{ text: 'Second paragraph here', lock: '' },
-						{ text: 'First line', lock: '' }
+						{ id: '', text: 'Second paragraph here', lock: '' },
+						{ id: '', text: 'First line', lock: '' }
 					]
 				};
 
@@ -247,45 +251,51 @@
 					var paraPos = window.getSelection().getRangeAt(0).startOffset,
 						paragraph = editor.getElementsByTagName('p'),
 						currentPos = findPosition(window.getSelection().getRangeAt(0).startContainer);
-					
-					//console.log('paragraphs', paragraph)
+
+					console.log('current keyCode:', event.keyCode);
 					// set color and lock
 					setColorAndLock();
 					
+					if (event.shiftKey) {
+						return false;
+					}
 
-					if (event.keyCode !== 13) {
-						
+					if (event.keyCode !== 13) { // if not enter
+						console.log('new text:', paragraph[currentPos.row].innerHTML);
 						if (paragraphs.data[currentPos.row].lock === '' || paragraphs.data[currentPos.row].lock === userId) {
-							paragraphs.data[currentPos.row].text = paragraph[currentPos.row].textContent;
+							paragraphs.data[currentPos.row].text = paragraph[currentPos.row].innerHTML;
 							paragraphs.data[currentPos.row].lock = userId;
 							
 							if (window.getSelection().getRangeAt(0).startContainer.parentNode.className !== 'editor') {
 								window.getSelection().getRangeAt(0).startContainer.parentNode.className = 'userColor1';
 							}
-						}
-						
+						}							
 					}
 
-					console.log('paragraphs', paragraphs)
+					console.log('paragraphs', paragraphs);
+
+					if (event.keyCode === 8 || event.keyCode === 46) { // if backspace or delete
+						console.log(editor.getElementsByTagName('p').length);
+						console.log(paragraphs.data.length);
+
+						if (editor.getElementsByTagName('p').length < paragraphs.data.length) { // if less paragraphs
+
+						}
+					}
 					
-					if (event.keyCode === 13) { // if enter key
-						//execCommandOnElement(editor, 'formatBlock', '<div>');
+					if (event.keyCode === 13) { // if enter
 						document.execCommand('formatBlock', false, '<p>');
 						
 						var newPos = findPosition(window.getSelection().getRangeAt(0).startContainer);
 						
-						//if (window.getSelection().getRangeAt(0).startContainer.previousSibling !== null) {
-							
-							if (newPos.row === paragraphs.data.length) { // if last line
-								paragraphs.data.splice((newPos.row), 0, {text: '', lock: userId});
-								//paragraphs.index.splice((newPos.row), 0, (paragraphs.data.length));
-								window.getSelection().getRangeAt(0).startContainer.previousSibling.classList.remove('userColor1');
-							} else {
-								paragraphs.data.splice((newPos.row), 0, {text: '', lock: userId});
-								//paragraphs.index.splice((newPos.row), 0, (paragraphs.data.length - 1));
-							}
-							
-						//}
+						if (newPos.row === paragraphs.data.length) { // if last line
+							paragraphs.data.splice((newPos.row), 0, {text: '', lock: userId});
+							//paragraphs.index.splice((newPos.row), 0, (paragraphs.data.length));
+							window.getSelection().getRangeAt(0).startContainer.previousSibling.classList.remove('userColor1');
+						} else {
+							paragraphs.data.splice((newPos.row), 0, {text: '', lock: userId});
+							//paragraphs.index.splice((newPos.row), 0, (paragraphs.data.length - 1));
+						}
 
 						socket.emit('sendText', paragraphs);
 
@@ -293,8 +303,10 @@
 						return false;
 					}
 
-					socket.emit('sendText', paragraphs);
-
+					if (event.keyCode !== 16) {
+						socket.emit('sendText', paragraphs);
+					}
+					
 					console.log(paragraphs);
 				}, false);
 			};
@@ -303,16 +315,15 @@
 
 			// handle recived event
 			socket.on('msgBroadcast', function (broadcastText) {
-				var editor = document.getElementById(broadcastText.editor);
-				console.log('editor:', editor);
 				var para = editor.getElementsByTagName('p');
-
 
 				console.log('recieving from broadcast', paragraphs);
 				
 				// check for new paragraphs
+				console.log('length of broadcast:', broadcastText.data.length);
+				console.log('length of para:', para.length);
 				for (var b = 0; b < broadcastText.data.length; b++) {
-
+					
 					if (para[b] === undefined) { // new last line
 						var newParagraph = document.createElement('p');
 						
@@ -333,12 +344,10 @@
 
 						editor.insertBefore(newParagraph, para[b]);
 						
-
 						paragraphs.data.splice(b, 0, {text: '', lock: broadcastText.data[b].lock});
 						//paragraphs.index.splice(b, 0, (paragraphs.data.length));
 					} else {
 						if (paragraphs.data[b].lock !== userId) {
-							console.log('updating paragraphs')
 							paragraphs.data[b].text = broadcastText.data[b].text;
 							paragraphs.data[b].lock = broadcastText.data[b].lock;
 						}
