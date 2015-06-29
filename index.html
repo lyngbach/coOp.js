@@ -165,6 +165,30 @@
 				editor,
 				counter = 0;
 
+			var findPosition = function (startContainer) {
+				var row = 0,
+					col = window.getSelection().getRangeAt(0).startOffset,
+					parentElement;
+				
+				if (startContainer.nodeType === 1) {
+					parentElement = startContainer.previousSibling;
+				} else {
+					parentElement = startContainer.parentNode.previousSibling;
+				}
+								
+				// find the current row/paragraph
+				while (parentElement.previousSibling !== null) {
+					if (parentElement.nodeType !== 3) {
+						row += 1;
+					}
+					
+					parentElement = parentElement.previousSibling;						
+				}
+
+				return { row: row, col: col }
+			};
+
+
 			var initEditor = function (element) {
 				counter++;
 				console.log('tmes inited?', counter)
@@ -180,29 +204,6 @@
 						{ id: '', text: 'Second paragraph here', lock: '' },
 						{ id: '', text: 'First line', lock: '' }
 					]
-				};
-
-				var findPosition = function (startContainer) {
-					var row = 0,
-						col = window.getSelection().getRangeAt(0).startOffset,
-						parentElement;
-					
-					if (startContainer.nodeType === 1) {
-						parentElement = startContainer.previousSibling;
-					} else {
-						parentElement = startContainer.parentNode.previousSibling;
-					}
-									
-					// find the current row/paragraph
-					while (parentElement.previousSibling !== null) {
-						if (parentElement.nodeType !== 3) {
-							row += 1;
-						}
-						
-						parentElement = parentElement.previousSibling;						
-					}
-
-					return { row: row, col: col }
 				};
 
 				var setColorAndLock = function (callback) {
@@ -261,7 +262,7 @@
 					}
 
 					if (event.keyCode !== 13) { // if not enter
-						console.log('new text:', paragraph[currentPos.row].innerHTML);
+						//console.log('new text:', paragraph[currentPos.row].innerHTML);
 						if (paragraphs.data[currentPos.row].lock === '' || paragraphs.data[currentPos.row].lock === userId) {
 							paragraphs.data[currentPos.row].text = paragraph[currentPos.row].innerHTML;
 							paragraphs.data[currentPos.row].lock = userId;
@@ -275,12 +276,29 @@
 					console.log('paragraphs', paragraphs);
 
 					if (event.keyCode === 8 || event.keyCode === 46) { // if backspace or delete
+						var currentPara = editor.getElementsByTagName('p');
+
 						console.log(editor.getElementsByTagName('p').length);
 						console.log(paragraphs.data.length);
 
-						if (editor.getElementsByTagName('p').length < paragraphs.data.length) { // if less paragraphs
+						if (currentPara.length < paragraphs.data.length) { // if something was removed
+							paragraphs.data = [];
+							paragraphs.index = [];
+							// check on id
 
+							for (var c = 0; c < currentPara.length; c++) {
+								
+								console.log('new line:', currentPara[c].innerHTML);
+								paragraphs.data.push(currentPara[c].innerHTML);
+								paragraphs.index.push(paragraphs.data.length);
+							}
+
+							console.log('after delete loop:', paragraphs);
+
+							//socket.emit('sendText', paragraphs);
 						}
+
+						//return false;
 					}
 					
 					if (event.keyCode === 13) { // if enter
@@ -302,8 +320,11 @@
 						// prevent the default behaviour of return key pressed
 						return false;
 					}
+					
 
 					if (event.keyCode !== 16) {
+						//console.log('here?', paragraphs);
+						//var stringifiedPara = JSON.stringify(paragraphs);
 						socket.emit('sendText', paragraphs);
 					}
 					
@@ -315,6 +336,7 @@
 
 			// handle recived event
 			socket.on('msgBroadcast', function (broadcastText) {
+				//var broadcastText = JSON.parse(broadcastText);
 				var para = editor.getElementsByTagName('p');
 
 				console.log('recieving from broadcast', paragraphs);
@@ -322,55 +344,109 @@
 				// check for new paragraphs
 				console.log('length of broadcast:', broadcastText.data.length);
 				console.log('length of para:', para.length);
-				for (var b = 0; b < broadcastText.data.length; b++) {
-					
-					if (para[b] === undefined) { // new last line
-						var newParagraph = document.createElement('p');
-						
-						console.log('new last line');
 
-						newParagraph.className = 'lastLine';
+				if (broadcastText.data.length < paragraphs.data.length) { // if paragraph was deleted
+					paragraphs.data = [];
 
-						editor.appendChild(newParagraph);
+					for (b = 0; b < broadcastText.data.length; b++) {
+						paragraphs.data.push({ text: broadcastText.data[b], lock: ''});
+					}
 
-						paragraphs.data.splice(b, 0, {text: '', lock: broadcastText.data[b].lock});
-						//paragraphs.index.splice(b, 0, (paragraphs.data.length));
-					} else if (broadcastText.data[b].text !== para[b].innerHTML && broadcastText.data[b].text === '') { // new line in between
-						var newParagraph = document.createElement('p');
+					console.log('after delete:', paragraphs);
 
-						console.log('new line in between');
+				} else {
+					for (var b = 0; b < broadcastText.data.length; b++) {
+						if (para[b] === undefined) { // new last line
+							var newParagraph = document.createElement('p');
+							
+							console.log('new last line');
 
-						newParagraph.className = 'yolo_swag';
+							newParagraph.className = 'lastLine';
 
-						editor.insertBefore(newParagraph, para[b]);
-						
-						paragraphs.data.splice(b, 0, {text: '', lock: broadcastText.data[b].lock});
-						//paragraphs.index.splice(b, 0, (paragraphs.data.length));
-					} else {
-						if (paragraphs.data[b].lock !== userId) {
-							paragraphs.data[b].text = broadcastText.data[b].text;
-							paragraphs.data[b].lock = broadcastText.data[b].lock;
-						}
-					}					
+							editor.appendChild(newParagraph);
+
+							paragraphs.data.splice(b, 0, {text: '', lock: broadcastText.data[b].lock});
+							//paragraphs.index.splice(b, 0, (paragraphs.data.length));
+						} else if (broadcastText.data[b].text !== para[b].innerHTML && broadcastText.data[b].text === '') { // new line in between
+							var newParagraph = document.createElement('p');
+
+							console.log('new line in between');
+
+							newParagraph.className = 'yolo_swag';
+
+							editor.insertBefore(newParagraph, para[b]);
+							
+							paragraphs.data.splice(b, 0, {text: '', lock: broadcastText.data[b].lock});
+							//paragraphs.index.splice(b, 0, (paragraphs.data.length));
+						} else {
+							if (paragraphs.data[b].lock !== userId) {
+								paragraphs.data[b].text = broadcastText.data[b].text;
+								paragraphs.data[b].lock = broadcastText.data[b].lock;
+							}
+						}					
+					}
 				}
 
 				console.log('paragraphs after first loop', paragraphs);
 
 				var newPara = editor.getElementsByTagName('p');
 				// insert changes
-				for (var n = 0; n < newPara.length; n++) {
-					//console.log('new paragraphs lock:', paragraphs.data[n].lock);
-					if (paragraphs.data[n].lock !== userId) {
-						if (paragraphs.data[n].text === '') {
-							newPara[n].innerHTML = '&nbsp;';
-						} else {
-							/*console.log('old text:', newPara[n].innerHTML);
-							console.log('new text:', paragraphs.data[n].text);
-							console.log('-----------');*/
-							newPara[n].innerHTML = paragraphs.data[n].text;	
-						}						
+
+				if (paragraphs.data.length < newPara.length) { // if paragraph was deleted
+					var newP;
+					var currentPos;
+					var range = document.createRange();
+
+
+					if (window.getSelection().getRangeAt(0).rangeCount > 0) {
+						currentPos = {
+							row: 0,
+							col: 0
+						};				
+					} else {
+						currentPos = findPosition(window.getSelection().getRangeAt(0).startContainer);
 					}
-				}				
+					
+					//currentCol = window.getSelection().getRangeAt(0).startOffset;
+					console.log('paragraph deleted, inserting new paras');
+					console.log('current caret pos:', currentPos);
+
+
+
+					editor.innerHTML = '';
+
+					for (var n = 0; n < paragraphs.data.length; n++) {
+						newP = document.createElement('p');
+
+						newP.innerHTML = paragraphs.data[n].text;
+						editor.appendChild(newP);
+					}
+
+					var currentNode = editor.getElementsByTagName('p')[currentPos.row].firstChild;
+
+					console.log('currentNode:', currentNode);
+					range.setStart(currentNode, currentPos.col);
+					range.setEnd(currentNode, currentPos.col);
+
+					var sel = window.getSelection();
+					sel.removeAllRanges();
+					sel.addRange(range);
+
+				} else {
+					for (var n = 0; n < newPara.length; n++) {
+						//console.log('new paragraphs lock:', paragraphs.data[n].lock);
+						if (paragraphs.data[n].lock !== userId) {
+							if (paragraphs.data[n].text === '') {
+								newPara[n].innerHTML = '&nbsp;';
+							} else {
+								/*console.log('old text:', newPara[n].innerHTML);
+								console.log('new text:', paragraphs.data[n].text);
+								console.log('-----------');*/
+								newPara[n].innerHTML = paragraphs.data[n].text;	
+							}						
+						}
+					}
+				}		
 			});
 			
 
