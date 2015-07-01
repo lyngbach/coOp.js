@@ -2,15 +2,17 @@
 //
 var coOp = function (targetEditor, options) {
 	'use strict';
-
-	console.log('hhas');
 	
+	socket.emit('coOpJoin', targetEditor, function () {
+		console.log('done joining room: ', targetEditor);
+	});
 
 	var that = this,
 		editor = document.getElementById(targetEditor),
+		options = options || {},
 		userId = options.userId || 'user_' + new Date().getSeconds(),
 		paragraphs = {
-			editor: editor,
+			editor: targetEditor,
 			data: []
 		};
 
@@ -31,6 +33,8 @@ var coOp = function (targetEditor, options) {
 		p.id = new Date().getTime();
 		p.innerHTML = '&nbsp;';
 
+		paragraphs.data.push({ text: '', lock: '', id: new Date().getSeconds() });
+		
 		editor.appendChild(p);
 	}
 
@@ -50,7 +54,7 @@ var coOp = function (targetEditor, options) {
 
 				//window.getSelection().getRangeAt(0).startContainer.parentNode.className = 'userColor1';
 
-				//socket.emit('sendText', paragraphs);
+				//socket.emit('coOpText', paragraphs);
 			} else {
 				window.getSelection().getRangeAt(0).startContainer.parentNode.className = 'userLocked';	
 			}
@@ -67,18 +71,19 @@ var coOp = function (targetEditor, options) {
 		} else {
 			parentElement = startContainer.parentNode.previousSibling;
 		}*/
-						
+		
 		// find the current row/paragraph
-		console.log('parentElement', parentElement);
+		//console.log('parentElement', parentElement.previousSibling.nodeType);
 		if (parentElement !== null) {
 			while (parentElement.previousSibling !== null) {
-				if (parentElement.nodeType !== 3) {
+				if (parentElement.previousSibling.nodeType !== 3) {
 					row += 1;
 				}
 				
 				parentElement = parentElement.previousSibling;
 			}
 		}
+		console.log('row:', row);
 		return { row: row, col: col };
 	};
 
@@ -178,7 +183,7 @@ var coOp = function (targetEditor, options) {
 
 				console.log('after delete loop:', paragraphs);
 
-				//socket.emit('sendText', paragraphs);
+				//socket.emit('coOpText', paragraphs);
 			}
 
 			//return false;
@@ -210,7 +215,7 @@ var coOp = function (targetEditor, options) {
 				//paragraphs.index.splice((newPos.row), 0, (paragraphs.data.length - 1));
 			}
 
-			socket.emit('sendText', paragraphs);
+			socket.emit('coOpText', paragraphs);
 			console.log('sent on enter:', paragraphs);
 			// prevent the default behaviour of return key pressed
 			return false;
@@ -220,7 +225,7 @@ var coOp = function (targetEditor, options) {
 		if (event.keyCode !== 16) {
 			//console.log('here?', paragraphs);
 			//var stringifiedPara = JSON.stringify(paragraphs);
-			socket.emit('sendText', paragraphs);
+			socket.emit('coOpText', paragraphs);
 		}
 		var integer = 12;
 

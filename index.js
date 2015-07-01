@@ -14,13 +14,26 @@ app.get('/', function (req, res) {
 io.sockets.on('connection', function (socket) {
 	console.log('a user session', socket.id);
 
-	socket.on('sendText', function (paragraphs) {
+	socket.on('coOpText', function (paragraphs) {
 		console.log('server recived text:', paragraphs);
 
 		console.log('sending to all other users');
 
-		socket.broadcast.emit('msgBroadcast', paragraphs);
+		//socket.broadcast.emit('msgBroadcast', paragraphs);
+		socket.broadcast.to(paragraphs.editor).emit('msgBroadcast', paragraphs);
 	});
+
+	socket.on('coOpJoin', function (targetEditor, callback) {
+		if (targetEditor !== '') {
+			console.info('joining co-op room:', targetEditor);
+			socket.join(targetEditor);
+
+			if (callback !== undefined) {
+				callback();
+			}
+		}
+		
+	})
 });
 
 http.listen(5000, function () {
