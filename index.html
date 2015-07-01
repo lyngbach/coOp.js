@@ -9,11 +9,13 @@
 			<head></head>
 			<body><div>some text</div></body>
 		</iframe>-->
-
+		<!--
+			<p id="1435745041965">Second paragraph here</p>
+			<p id="1435745055968">First line</p>
+		-->
 		<section class="editWrapper">
 			<div contenteditable="true" id="editor" class="editor">
-				<p>Second paragraph here</p>
-				<p>First line</p>
+				
 			</div>
 
 			<div contenteditable="true" id="newBox" class="editor">
@@ -35,16 +37,15 @@
 		</div>
 
 		<script src="node_modules/socket.io/node_modules/socket.io-client/socket.io.js"></script>
+		<script src="js/coOp.js"></script>
 		<script>
-			var socket = io.connect(),
-				userId = 'user_' + new Date().getSeconds();
+			var socket = io.connect();
 
-			document.getElementById('theUser').innerHTML = userId;
+			
 			/*var editor = document.getElementById('editor').contentDocument;
 			editor.designMode = "On";
 			editor.execCommand("insertBrOnReturn", false, "true");*/
-			console.log('unique user: ' + userId);
-
+			
 
 			/*function execCommandOnElement(el, commandName, value) {
 				if (typeof value == "undefined") {
@@ -92,7 +93,7 @@
 				}
 			}*/
 
-			var coop = {
+			/*var coOp = {
 				goal: {
 					desc: [
 						{ text: 'Second paragraph here', lock: '' },
@@ -159,11 +160,27 @@
 						]	
 					}
 				}
-			};
+			};*/
 
-			var paragraphs,
-				editor,
-				counter = 0;
+			
+
+
+
+
+			var coOpText = new coOp('editor', {
+				data: [
+					{ text: 'Second paragraph here', lock: '', id: 1435745041965 },
+					{ text: 'First line', lock: '', id: 1435745055968 }
+				]
+			});
+
+
+
+
+
+			// original
+			/*var paragraphs,
+				editor;
 
 			var findPosition = function (startContainer) {
 				var row = 0,
@@ -177,32 +194,42 @@
 				}
 								
 				// find the current row/paragraph
-				while (parentElement.previousSibling !== null) {
-					if (parentElement.nodeType !== 3) {
-						row += 1;
+				if (parentElement !== null) {
+					while (parentElement.previousSibling !== null) {
+						if (parentElement.nodeType !== 3) {
+							row += 1;
+						}
+						
+						parentElement = parentElement.previousSibling;						
 					}
-					
-					parentElement = parentElement.previousSibling;						
 				}
 
 				return { row: row, col: col }
 			};
 
+			var setCaret = function (currentPos) {
+				var paragraph = editor.getElementsByTagName('p'),
+					range = document.createRange(),
+					currentNode = paragraph[currentPos.row].firstChild,
+					sel = window.getSelection();
+
+
+				range.setStart(currentNode, (currentPos.col));
+				range.setEnd(currentNode, (currentPos.col));
+			
+				sel.removeAllRanges();
+				sel.addRange(range);
+			};
+
 
 			var initEditor = function (element) {
-				counter++;
-				console.log('tmes inited?', counter)
 				editor = document.getElementById(element);
 				
 				paragraphs = {
-					index: [
-						1,
-						0
-					],
 					editor: element,
 					data: [
-						{ id: '', text: 'Second paragraph here', lock: '' },
-						{ id: '', text: 'First line', lock: '' }
+						{ text: 'Second paragraph here', lock: '', id: 1435745041965 },
+						{ text: 'First line', lock: '', id: 1435745055968 }
 					]
 				};
 
@@ -223,7 +250,7 @@
 					}
 
 					if (callback !== undefined) {
-						callback();	
+						callback();
 					}
 					
 				};
@@ -236,9 +263,9 @@
 					// set color and lock
 					setColorAndLock(function () {
 						if (paragraphs.data[currentPos.row].lock === '') {
-							/*paragraphs.data[currentPos.row].lock = userId;
+							//paragraphs.data[currentPos.row].lock = userId;
 
-							window.getSelection().getRangeAt(0).startContainer.parentNode.className = 'userColor1';*/
+							//window.getSelection().getRangeAt(0).startContainer.parentNode.className = 'userColor1';
 
 							//socket.emit('sendText', paragraphs);
 						} else {
@@ -253,10 +280,9 @@
 						paragraph = editor.getElementsByTagName('p'),
 						currentPos = findPosition(window.getSelection().getRangeAt(0).startContainer);
 
-					console.log('current keyCode:', event.keyCode);
 					// set color and lock
 					setColorAndLock();
-					
+
 					if (event.shiftKey) {
 						return false;
 					}
@@ -266,12 +292,21 @@
 						if (paragraphs.data[currentPos.row].lock === '' || paragraphs.data[currentPos.row].lock === userId) {
 							paragraphs.data[currentPos.row].text = paragraph[currentPos.row].innerHTML;
 							paragraphs.data[currentPos.row].lock = userId;
+							console.log('here inside free area', paragraph[currentPos.row].innerHTML);
 							
 							if (window.getSelection().getRangeAt(0).startContainer.parentNode.className !== 'editor') {
 								window.getSelection().getRangeAt(0).startContainer.parentNode.className = 'userColor1';
 							}
-						}							
+						} else {
+							// set userlock class and remove typed characters
+							paragraph[currentPos.row].className = 'userLocked';
+							paragraph[currentPos.row].innerHTML = paragraphs.data[currentPos.row].text;
+
+
+							setCaret(currentPos);
+						}					
 					}
+					
 
 					console.log('paragraphs', paragraphs);
 
@@ -283,14 +318,14 @@
 
 						if (currentPara.length < paragraphs.data.length) { // if something was removed
 							paragraphs.data = [];
-							paragraphs.index = [];
+							//paragraphs.index = [];
 							// check on id
 
 							for (var c = 0; c < currentPara.length; c++) {
 								
 								console.log('new line:', currentPara[c].innerHTML);
-								paragraphs.data.push(currentPara[c].innerHTML);
-								paragraphs.index.push(paragraphs.data.length);
+								paragraphs.data.push({ text: currentPara[c].innerHTML, lock: '', id: parseInt(currentPara[c].id) });
+								//paragraphs.index.push(paragraphs.data.length);
 							}
 
 							console.log('after delete loop:', paragraphs);
@@ -304,19 +339,32 @@
 					if (event.keyCode === 13) { // if enter
 						document.execCommand('formatBlock', false, '<p>');
 						
-						var newPos = findPosition(window.getSelection().getRangeAt(0).startContainer);
+						window.getSelection().focusNode.innerHTML = '&nbsp;';
 						
-						if (newPos.row === paragraphs.data.length) { // if last line
-							paragraphs.data.splice((newPos.row), 0, {text: '', lock: userId});
+						var newPos = findPosition(window.getSelection().getRangeAt(0).startContainer);
+						var time = new Date().getTime();
+
+						window.getSelection().focusNode.id = time;
+
+						console.log('newPos:', newPos);
+						if (newPos.row === paragraphs.data.length && window.getSelection().getRangeAt(0).startContainer.previousSibling !== null) { // if last line
+							
+							paragraphs.data.splice((newPos.row), 0, { text: '', lock: userId, id: time });
 							//paragraphs.index.splice((newPos.row), 0, (paragraphs.data.length));
 							window.getSelection().getRangeAt(0).startContainer.previousSibling.classList.remove('userColor1');
 						} else {
-							paragraphs.data.splice((newPos.row), 0, {text: '', lock: userId});
+							if (newPos.row < paragraphs.data.length) { // if a line was cutted by new line
+								paragraphs.data[newPos.row - 1].text = editor.getElementsByTagName('p')[newPos.row - 1].innerHTML;
+								paragraphs.data.splice(newPos.row, 0, { text: editor.getElementsByTagName('p')[newPos.row].innerHTML, lock: userId, id: time });
+							} else {
+								paragraphs.data.splice((newPos.row - 1), 0, { text: '', lock: userId, id: time });
+							}
+							
 							//paragraphs.index.splice((newPos.row), 0, (paragraphs.data.length - 1));
 						}
 
 						socket.emit('sendText', paragraphs);
-
+						console.log('sent on enter:', paragraphs);
 						// prevent the default behaviour of return key pressed
 						return false;
 					}
@@ -327,8 +375,9 @@
 						//var stringifiedPara = JSON.stringify(paragraphs);
 						socket.emit('sendText', paragraphs);
 					}
-					
-					console.log(paragraphs);
+					var integer = 12;
+
+					console.log('sent paragraphs:', paragraphs);
 				}, false);
 			};
 
@@ -339,51 +388,52 @@
 				//var broadcastText = JSON.parse(broadcastText);
 				var para = editor.getElementsByTagName('p');
 
-				console.log('recieving from broadcast', paragraphs);
+				console.log('recieving from broadcast', broadcastText);
 				
 				// check for new paragraphs
-				console.log('length of broadcast:', broadcastText.data.length);
-				console.log('length of para:', para.length);
+				//console.log('length of broadcast:', broadcastText.data.length);
+				//console.log('length of para:', para.length);
 
 				if (broadcastText.data.length < paragraphs.data.length) { // if paragraph was deleted
 					paragraphs.data = [];
 
 					for (b = 0; b < broadcastText.data.length; b++) {
-						paragraphs.data.push({ text: broadcastText.data[b], lock: ''});
+						paragraphs.data.push({ text: broadcastText.data[b].text, lock: '', id: broadcastText.data[b].id });
 					}
 
 					console.log('after delete:', paragraphs);
 
 				} else {
 					for (var b = 0; b < broadcastText.data.length; b++) {
-						if (para[b] === undefined) { // new last line
+						if (para[b] === undefined) { // last line
 							var newParagraph = document.createElement('p');
 							
 							console.log('new last line');
-
+							newParagraph.id = broadcastText.data[b].id;
 							newParagraph.className = 'lastLine';
 
 							editor.appendChild(newParagraph);
 
-							paragraphs.data.splice(b, 0, {text: '', lock: broadcastText.data[b].lock});
-							//paragraphs.index.splice(b, 0, (paragraphs.data.length));
-						} else if (broadcastText.data[b].text !== para[b].innerHTML && broadcastText.data[b].text === '') { // new line in between
-							var newParagraph = document.createElement('p');
-
-							console.log('new line in between');
-
-							newParagraph.className = 'yolo_swag';
-
-							editor.insertBefore(newParagraph, para[b]);
-							
-							paragraphs.data.splice(b, 0, {text: '', lock: broadcastText.data[b].lock});
-							//paragraphs.index.splice(b, 0, (paragraphs.data.length));
-						} else {
+							paragraphs.data.splice(b, 0, { text: broadcastText.data[b].text, lock: broadcastText.data[b].lock, id: broadcastText.data[b].id });
+						} else if (broadcastText.data[b].id === parseInt(para[b].id)) {
+							console.log('same line, update text if not locked');
 							if (paragraphs.data[b].lock !== userId) {
 								paragraphs.data[b].text = broadcastText.data[b].text;
 								paragraphs.data[b].lock = broadcastText.data[b].lock;
+								//paragraphs.data[b].id = broadcastText.data[b].id;
 							}
-						}					
+						} else {
+							console.log('aha! new line here insertBefore');
+
+							var newParagraph = document.createElement('p');
+
+							newParagraph.id = broadcastText.data[b].id;
+							newParagraph.className = 'yolo swag';
+
+							editor.insertBefore(newParagraph, para[b]);
+							
+							paragraphs.data.splice(b, 0, { text: broadcastText.data[b].text, lock: broadcastText.data[b].lock, id: broadcastText.data[b].id });
+						}			
 					}
 				}
 
@@ -398,20 +448,18 @@
 					var range = document.createRange();
 
 
-					if (window.getSelection().getRangeAt(0).rangeCount > 0) {
+					if (window.getSelection().rangeCount > 0) {
+						currentPos = findPosition(window.getSelection().getRangeAt(0).startContainer);
+					} else {
 						currentPos = {
 							row: 0,
 							col: 0
-						};				
-					} else {
-						currentPos = findPosition(window.getSelection().getRangeAt(0).startContainer);
+						};
 					}
 					
 					//currentCol = window.getSelection().getRangeAt(0).startOffset;
-					console.log('paragraph deleted, inserting new paras');
+					console.log('paragraph deleted, inserting new paras', paragraphs);
 					console.log('current caret pos:', currentPos);
-
-
 
 					editor.innerHTML = '';
 
@@ -419,18 +467,12 @@
 						newP = document.createElement('p');
 
 						newP.innerHTML = paragraphs.data[n].text;
+						newP.id = paragraphs.data[n].id;
+
 						editor.appendChild(newP);
 					}
 
-					var currentNode = editor.getElementsByTagName('p')[currentPos.row].firstChild;
-
-					console.log('currentNode:', currentNode);
-					range.setStart(currentNode, currentPos.col);
-					range.setEnd(currentNode, currentPos.col);
-
-					var sel = window.getSelection();
-					sel.removeAllRanges();
-					sel.addRange(range);
+					setCaret(currentPos);
 
 				} else {
 					for (var n = 0; n < newPara.length; n++) {
@@ -439,15 +481,12 @@
 							if (paragraphs.data[n].text === '') {
 								newPara[n].innerHTML = '&nbsp;';
 							} else {
-								/*console.log('old text:', newPara[n].innerHTML);
-								console.log('new text:', paragraphs.data[n].text);
-								console.log('-----------');*/
-								newPara[n].innerHTML = paragraphs.data[n].text;	
+								newPara[n].innerHTML = paragraphs.data[n].text;
 							}						
 						}
 					}
-				}		
-			});
+				}
+			});*/
 			
 
 			document.getElementById('editorBold').addEventListener('click', function () {
