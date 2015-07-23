@@ -33,7 +33,7 @@ io.sockets.on('connection', function (socket) {
 			}
 		}
 		
-	})
+	});
 });
 
 http.listen(5000, function () {
